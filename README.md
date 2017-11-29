@@ -33,7 +33,7 @@ $ vault auth-enable centrify
 Successfully enabled 'centrify' at 'centrify'!
 ```
 
-Before the plugin can authenticate users, both the plugin and your cloud service tenant must be configured correctly.  To configure your cloud tenant, sign in as an administrator and perform the following actions.
+Before the plugin can authenticate users, both the plugin and your cloud service tenant must be configured correctly.  To configure your cloud tenant, sign in as an administrator and perform the following actions.  Please note that this plugin requires the Centrify Cloud Identity Service version 17.11 or newer.
 
 ### Create an OAuth2 Confidential Client
 
