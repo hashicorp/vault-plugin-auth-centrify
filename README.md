@@ -33,11 +33,70 @@ $ vault auth-enable centrify
 Successfully enabled 'centrify' at 'centrify'!
 ```
 
+Before the plugin can authenticate users, both the plugin and your cloud service tenant must be configured correctly.  To configure your cloud tenant, sign in as an administrator and perform the following actions.
+
+### Create an OAuth2 Confidential Client
+
+An OAuth2 Confidentical Client is a Centrify Directory User.
+
+- Users -> Add User
+  - Login Name: vault_integration@<yoursuffix>
+  - Display Name: Vault Integration Confidential Client
+  - Check the "Is OAuth confidentical client" box
+  - Password Type: Generated (be sure to copy the value, you will need it later)
+  - Create User
+
+### Create a Role
+
+To scope the users who can authenticate to vault, and to allow our Confidential Client access, we will create a role.
+
+- Roles -> Add Role
+  - Name: Vault Integration
+  - Members -> Add
+    - Search for and add the vault_integration@<yoursuffix> user
+    - Additionally add any roles/groups/users who should be able to authenticate to vault
+  - Save
+
+### Create an OAuth2 Client Application
+- Apps -> Add Web Apps -> Custom -> OAuth2 Client
+- Configure the added application
+  - Description:
+    - Application ID: "vault_io_integration" 
+    - Application Name: "Vault Integration"
+  - General Usage:
+    - Client ID Type -> Confidential (must be OAuth client)
+  - Tokens:
+    - Token Type: JwtRS256
+    - Auth methods: Client Creds + Resource Owner    
+  - Scope
+    - Add a single scope named "vault_io_integration" with a regex of "usermgmt/GetUsersRolesAndAdministrativeRights" (no quotes)
+  - User Access
+    - Add the previously created "Vault Integration" role    
+  - Save
+
+### Configuring the Vault Plugin
+
+As an administrative vault user, you can read/write the centrify plugin configuration using the /auth/centrify/config path:
+
+```sh
+$ vault write auth/centrify/config service_url=https://<tenantid>.my.centrify.com client_id=vault_integration@<yoursuffix> client_secret=<password copied earlier> app_id=vault_io_integration scope=vault_io_integration
+```
+
+### Authenticating
+
+As a valid user of your tenant, in the appropriate role for accessing the Vault Integration app, you can now authenticate to the vault:
+
+```sh
+$ vault auth -method=centrify username=<your username>
+```
+
+Your vault token will be valid for the length of time defined in the app's token lifetime configuration (default 5 hours).
+
 ## Developing
 
 If you wish to work on this plugin, you'll first need
 [Go](https://www.golang.org) installed on your machine
-(version 1.8+ is *required*).
+(version 1.9+ is *required*).
 
 For local dev first make sure Go is properly installed, including
 setting up a [GOPATH](https://golang.org/doc/code.html#GOPATH).

@@ -28,12 +28,12 @@ func pathConfig(b *backend) *framework.Path {
 			"app_id": &framework.FieldSchema{
 				Type:        framework.TypeString,
 				Description: "OAuth2 App ID",
-				Default:     "vault_io_auth",
+				Default:     "vault_io_integration",
 			},
 			"scope": &framework.FieldSchema{
 				Type:        framework.TypeString,
 				Description: "OAuth2 App Scope",
-				Default:     "vault_io_auth",
+				Default:     "vault_io_integration",
 			},
 			"policies": &framework.FieldSchema{
 				Type:        framework.TypeCommaStringSlice,
@@ -102,7 +102,7 @@ func (b *backend) pathConfigCreateOrUpdate(
 		config.AppID = data.Get("app_id").(string)
 	}
 	if config.AppID == "" {
-		config.AppID = "vault_io_auth"
+		config.AppID = "vault_io_integration"
 	}
 
 	val, ok = data.GetOk("scope")
@@ -112,7 +112,7 @@ func (b *backend) pathConfigCreateOrUpdate(
 		config.Scope = data.Get("scope").(string)
 	}
 	if config.Scope == "" {
-		config.Scope = "vault_io_auth"
+		config.Scope = "vault_io_integration"
 	}
 
 	val, ok = data.GetOk("roles_as_policies")
