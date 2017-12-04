@@ -7,8 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hashicorp/vault-plugin-auth-centrify/internal/oauth"
-	"github.com/hashicorp/vault-plugin-auth-centrify/internal/restapi"
+	"github.com/hashicorp/go-cleanhttp"
+
+	"github.com/centrify/cloud-golang-sdk/oauth"
+	"github.com/centrify/cloud-golang-sdk/restapi"
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
 )
@@ -84,13 +86,15 @@ func (b *backend) pathLogin(
 	var failure *oauth.ErrorResponse
 
 	if mode == "cc" {
-		oclient, err = oauth.GetNewConfidentialClient(config.ServiceURL, username, password)
+		oclient, err = oauth.GetNewConfidentialClient(config.ServiceURL, username, password, cleanhttp.DefaultClient)
+		oclient.SourceHeader = "vault-auth-plugin"
 		if err != nil {
 			log.Fatal(err)
 		}
 		token, failure, err = oclient.ClientCredentials(config.AppID, config.Scope)
 	} else if mode == "ro" {
-		oclient, err = oauth.GetNewConfidentialClient(config.ServiceURL, config.ClientID, config.ClientSecret)
+		oclient, err = oauth.GetNewConfidentialClient(config.ServiceURL, config.ClientID, config.ClientSecret, cleanhttp.DefaultClient)
+		oclient.SourceHeader = "vault-auth-plugin"
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -149,12 +153,13 @@ func (b *backend) pathLogin(
 }
 
 func (b *backend) getUsersRoles(accessToken *oauth.TokenResponse, serviceUrl string) ([]string, error) {
-	restClient, err := restapi.GetNewRestClient(serviceUrl)
+	restClient, err := restapi.GetNewRestClient(serviceUrl, cleanhttp.DefaultClient)
 	if err != nil {
 		return nil, err
 	}
 
 	restClient.Headers["Authorization"] = accessToken.TokenType + " " + accessToken.AccessToken
+	restClient.SourceHeader = "vault-auth-plugin"
 
 	rolesAndRightsResult, err := restClient.CallGenericMapAPI("/usermgmt/GetUsersRolesAndAdministrativeRights", nil)
 	if err != nil {
