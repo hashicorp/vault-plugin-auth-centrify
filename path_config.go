@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/hashicorp/vault/helper/policyutil"
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
 )
@@ -122,6 +123,17 @@ func (b *backend) pathConfigCreateOrUpdate(
 		config.RolesAsPolicies = data.Get("roles_as_policies").(bool)
 	}
 
+	val, ok = data.GetOk("policies")
+	if ok {
+		config.Policies = policyutil.ParsePolicies(val)
+	} else if req.Operation == logical.CreateOperation {
+		config.Policies = policyutil.ParsePolicies(data.Get("policies"))
+	}
+	if len(config.Policies) == 0 {
+		config.Policies = make([]string, 1)
+		config.Policies[0] = "centrify"
+	}
+
 	if len(config.ServiceURL) != 0 {
 		_, err := url.Parse(config.ServiceURL)
 		if err != nil {
@@ -167,6 +179,7 @@ func (b *backend) pathConfigRead(req *logical.Request, data *framework.FieldData
 			"app_id":            config.AppID,
 			"scope":             config.Scope,
 			"roles_as_policies": config.RolesAsPolicies,
+			"policies":          config.Policies,
 		},
 	}
 	return resp, nil

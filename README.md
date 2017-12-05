@@ -69,7 +69,9 @@ To scope the users who can authenticate to vault, and to allow our Confidential 
     - Token Type: JwtRS256
     - Auth methods: Client Creds + Resource Owner    
   - Scope
-    - Add a single scope named "vault_io_integration" with a regex of "usermgmt/GetUsersRolesAndAdministrativeRights" (no quotes)
+    - Add a single scope named "vault_io_integration" with the following regexes:
+      - usermgmt/getusersrolesandadministrativerights
+      - security/whoami
   - User Access
     - Add the previously created "Vault Integration" role    
   - Save

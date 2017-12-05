@@ -1,7 +1,6 @@
 package centrify
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -111,14 +110,15 @@ func (b *backend) pathLogin(
 		return nil, fmt.Errorf("OAuth2 token request failed: %v", failure)
 	}
 
-	roleList, err := b.getUsersRoles(token, config.ServiceURL)
+	uinfo, err := b.getUserInfo(token, config.ServiceURL)
+	b.Logger().Trace("centrify authenticated user", "userinfo", uinfo)
 	if err != nil {
 		return nil, err
 	}
 
 	var rolePolicies []string
 	if config.RolesAsPolicies {
-		for _, role := range roleList {
+		for _, role := range uinfo.roles {
 			rolePolicies = append(rolePolicies, strings.Replace(role, " ", "_", -1))
 		}
 	}
@@ -130,7 +130,7 @@ func (b *backend) pathLogin(
 			},
 			Policies: append(config.Policies, rolePolicies...),
 			Metadata: map[string]string{
-				"username": username,
+				"username": uinfo.username,
 			},
 			DisplayName: username,
 			LeaseOptions: logical.LeaseOptions{
@@ -140,10 +140,11 @@ func (b *backend) pathLogin(
 			Alias: &logical.Alias{
 				Name: username,
 			},
+			EntityID: strings.ToLower(uinfo.uuid),
 		},
 	}
 
-	for _, role := range roleList {
+	for _, role := range uinfo.roles {
 		resp.Auth.GroupAliases = append(resp.Auth.GroupAliases, &logical.Alias{
 			Name: role,
 		})
@@ -152,7 +153,16 @@ func (b *backend) pathLogin(
 	return resp, nil
 }
 
-func (b *backend) getUsersRoles(accessToken *oauth.TokenResponse, serviceUrl string) ([]string, error) {
+type userinfo struct {
+	uuid     string
+	username string
+	roles    []string
+}
+
+// getUserInfo returns list of user's roles, user uuid, user name
+func (b *backend) getUserInfo(accessToken *oauth.TokenResponse, serviceUrl string) (*userinfo, error) {
+	uinfo := &userinfo{}
+
 	restClient, err := restapi.GetNewRestClient(serviceUrl, cleanhttp.DefaultClient)
 	if err != nil {
 		return nil, err
@@ -161,12 +171,21 @@ func (b *backend) getUsersRoles(accessToken *oauth.TokenResponse, serviceUrl str
 	restClient.Headers["Authorization"] = accessToken.TokenType + " " + accessToken.AccessToken
 	restClient.SourceHeader = "vault-auth-plugin"
 
+	// First call /security/whoami to get details on current user
+	whoami, err := restClient.CallGenericMapAPI("/security/whoami", nil)
+	if err != nil {
+		return nil, err
+	}
+	uinfo.username = whoami.Result["User"].(string)
+	uinfo.uuid = whoami.Result["UserUuid"].(string)
+
+	// Now enumerate roles
 	rolesAndRightsResult, err := restClient.CallGenericMapAPI("/usermgmt/GetUsersRolesAndAdministrativeRights", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var roleList = make([]string, 0)
+	uinfo.roles = make([]string, 0)
 
 	if rolesAndRightsResult.Success {
 		// Results is an array of map[string]interface{}
@@ -174,14 +193,13 @@ func (b *backend) getUsersRoles(accessToken *oauth.TokenResponse, serviceUrl str
 		for _, v := range results {
 			var resultItem = v.(map[string]interface{})
 			var row = resultItem["Row"].(map[string]interface{})
-			roleList = append(roleList, row["Name"].(string))
-			// strings.Replace(row["Name"].(string), " ", "_", -1)
+			uinfo.roles = append(uinfo.roles, row["Name"].(string))
 		}
 	} else {
-		return nil, errors.New(rolesAndRightsResult.Message)
+		b.Logger().Error("centrify: failed to get user roles", "error", rolesAndRightsResult.Message)
 	}
 
-	return roleList, nil
+	return uinfo, nil
 }
 
 const pathLoginSyn = `
