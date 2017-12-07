@@ -22,11 +22,6 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 		return nil, fmt.Errorf("'username' not supplied")
 	}
 
-	mode, ok := m["mode"]
-	if !ok {
-		mode = "ro" // default to resource owner
-	}
-
 	password, ok := m["password"]
 	if !ok {
 		fmt.Printf("Password (will be hidden): ")
@@ -41,7 +36,11 @@ func (h *CLIHandler) Auth(c *api.Client, m map[string]string) (*api.Secret, erro
 	data := map[string]interface{}{
 		"username": username,
 		"password": password,
-		"mode":     mode,
+	}
+
+	mode, ok := m["mode"]
+	if ok {
+		data["mode"] = mode
 	}
 
 	path := fmt.Sprintf("auth/%s/login", mount)

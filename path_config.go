@@ -39,7 +39,6 @@ func pathConfig(b *backend) *framework.Path {
 			"policies": &framework.FieldSchema{
 				Type:        framework.TypeCommaStringSlice,
 				Description: "Comma-separated list of policies all authenticated users inherit",
-				Default:     []string{"centrify"},
 			},
 			"roles_as_policies": &framework.FieldSchema{
 				Type:        framework.TypeBool,
@@ -47,6 +46,8 @@ func pathConfig(b *backend) *framework.Path {
 				Default:     false,
 			},
 		},
+
+		ExistenceCheck: b.pathConfigExistCheck,
 
 		Callbacks: map[logical.Operation]framework.OperationFunc{
 			logical.UpdateOperation: b.pathConfigCreateOrUpdate,
@@ -56,6 +57,19 @@ func pathConfig(b *backend) *framework.Path {
 
 		HelpSynopsis: pathSyn,
 	}
+}
+
+func (b *backend) pathConfigExistCheck(req *logical.Request, data *framework.FieldData) (bool, error) {
+	config, err := b.Config(req.Storage)
+	if err != nil {
+		return false, err
+	}
+
+	if config == nil {
+		return false, nil
+	}
+
+	return true, nil
 }
 
 func (b *backend) pathConfigCreateOrUpdate(
@@ -129,10 +143,6 @@ func (b *backend) pathConfigCreateOrUpdate(
 	} else if req.Operation == logical.CreateOperation {
 		config.Policies = policyutil.ParsePolicies(data.Get("policies"))
 	}
-	if len(config.Policies) == 0 {
-		config.Policies = make([]string, 1)
-		config.Policies[0] = "centrify"
-	}
 
 	if len(config.ServiceURL) != 0 {
 		_, err := url.Parse(config.ServiceURL)
@@ -168,7 +178,7 @@ func (b *backend) pathConfigRead(req *logical.Request, data *framework.FieldData
 	}
 
 	if config == nil {
-		return nil, fmt.Errorf("configuration object not found")
+		return nil, nil
 	}
 
 	resp := &logical.Response{
@@ -203,13 +213,13 @@ func (b *backend) Config(s logical.Storage) (*config, error) {
 }
 
 type config struct {
-	ClientID        string   `json:"clientID" structs:"clientID" mapstructure:"clientID"`
-	ClientSecret    string   `json:"clientSecret" structs:"clientSecret" mapstructure:"clientSecret"`
-	ServiceURL      string   `json:"serviceUrl" structs:"serviceUrl" mapstructure:"serviceUrl"`
-	AppID           string   `json:"appID" structs:"appID" mapstructure:"appID"`
+	ClientID        string   `json:"client_id" structs:"client_id" mapstructure:"client_id"`
+	ClientSecret    string   `json:"client_secret" structs:"client_secret" mapstructure:"client_secret"`
+	ServiceURL      string   `json:"service_url" structs:"service_url" mapstructure:"service_url"`
+	AppID           string   `json:"app_id" structs:"app_id" mapstructure:"app_id"`
 	Scope           string   `json:"scope" structs:"scope" mapstructure:"scope"`
 	Policies        []string `json:"policies" structs:"policies" mapstructure:"policies"`
-	RolesAsPolicies bool     `json:"rolesAsPolicies" structs:"rolesAsPolicies" mapstructure:"rolesAsPolicies"`
+	RolesAsPolicies bool     `json:"roles_as_policies" structs:"roles_as_policies" mapstructure:"roles_as_policies"`
 }
 
 const pathSyn = `
