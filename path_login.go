@@ -1,6 +1,7 @@
 package centrify
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -13,8 +14,6 @@ import (
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
 )
-
-const defaultAuthMode = "ro"
 
 func pathLogin(b *backend) *framework.Path {
 	return &framework.Path{
@@ -31,6 +30,7 @@ func pathLogin(b *backend) *framework.Path {
 			"mode": &framework.FieldSchema{
 				Type:        framework.TypeString,
 				Description: "Auth mode ('ro' for resource owner, 'cc' for credential client).",
+				Default:     "ro",
 			},
 		},
 
@@ -71,13 +71,13 @@ func (b *backend) pathLogin(
 		return nil, fmt.Errorf("missing password")
 	}
 
-	if mode == "" {
-		mode = defaultAuthMode
-	}
-
 	config, err := b.Config(req.Storage)
 	if err != nil {
 		return nil, err
+	}
+
+	if config == nil {
+		return nil, errors.New("centrify auth plugin configuration not set")
 	}
 
 	var oclient *oauth.OauthClient
@@ -86,14 +86,14 @@ func (b *backend) pathLogin(
 
 	if mode == "cc" {
 		oclient, err = oauth.GetNewConfidentialClient(config.ServiceURL, username, password, cleanhttp.DefaultClient)
-		oclient.SourceHeader = "vault-auth-plugin"
+		oclient.SourceHeader = "vault-plugin-auth-centrify"
 		if err != nil {
 			log.Fatal(err)
 		}
 		token, failure, err = oclient.ClientCredentials(config.AppID, config.Scope)
 	} else if mode == "ro" {
 		oclient, err = oauth.GetNewConfidentialClient(config.ServiceURL, config.ClientID, config.ClientSecret, cleanhttp.DefaultClient)
-		oclient.SourceHeader = "vault-auth-plugin"
+		oclient.SourceHeader = "vault-plugin-auth-centrify"
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -140,7 +140,6 @@ func (b *backend) pathLogin(
 			Alias: &logical.Alias{
 				Name: username,
 			},
-			EntityID: strings.ToLower(uinfo.uuid),
 		},
 	}
 
@@ -169,7 +168,7 @@ func (b *backend) getUserInfo(accessToken *oauth.TokenResponse, serviceUrl strin
 	}
 
 	restClient.Headers["Authorization"] = accessToken.TokenType + " " + accessToken.AccessToken
-	restClient.SourceHeader = "vault-auth-plugin"
+	restClient.SourceHeader = "vault-plugin-auth-centrify"
 
 	// First call /security/whoami to get details on current user
 	whoami, err := restClient.CallGenericMapAPI("/security/whoami", nil)

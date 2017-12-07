@@ -3,7 +3,6 @@ package centrify
 import (
 	"fmt"
 	"net/url"
-	"strings"
 
 	"github.com/hashicorp/vault/helper/policyutil"
 	"github.com/hashicorp/vault/logical"
@@ -75,90 +74,85 @@ func (b *backend) pathConfigExistCheck(req *logical.Request, data *framework.Fie
 func (b *backend) pathConfigCreateOrUpdate(
 	req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 
-	config, err := b.Config(req.Storage)
+	cfg, err := b.Config(req.Storage)
 	if err != nil {
 		return nil, err
 	}
 
+	if cfg == nil {
+		cfg = &config{}
+	}
+
 	val, ok := data.GetOk("client_id")
 	if ok {
-		config.ClientID = val.(string)
+		cfg.ClientID = val.(string)
 	} else if req.Operation == logical.CreateOperation {
-		config.ClientID = data.Get("client_id").(string)
+		cfg.ClientID = data.Get("client_id").(string)
 	}
-	if config.ClientID == "" {
+	if cfg.ClientID == "" {
 		return logical.ErrorResponse("config parameter `client_id` cannot be empty"), nil
 	}
 
 	val, ok = data.GetOk("client_secret")
 	if ok {
-		config.ClientSecret = val.(string)
+		cfg.ClientSecret = val.(string)
 	} else if req.Operation == logical.CreateOperation {
-		config.ClientSecret = data.Get("client_secret").(string)
+		cfg.ClientSecret = data.Get("client_secret").(string)
 	}
-	if config.ClientSecret == "" {
+	if cfg.ClientSecret == "" {
 		return logical.ErrorResponse("config parameter `client_secret` cannot be empty"), nil
 	}
 
 	val, ok = data.GetOk("service_url")
 	if ok {
-		config.ServiceURL = val.(string)
+		cfg.ServiceURL = val.(string)
 	} else if req.Operation == logical.CreateOperation {
-		config.ServiceURL = data.Get("service_url").(string)
+		cfg.ServiceURL = data.Get("service_url").(string)
 	}
-	if config.ServiceURL == "" {
+	if cfg.ServiceURL == "" {
 		return logical.ErrorResponse("config parameter `service_url` cannot be empty"), nil
 	}
 
 	val, ok = data.GetOk("app_id")
 	if ok {
-		config.AppID = val.(string)
+		cfg.AppID = val.(string)
 	} else if req.Operation == logical.CreateOperation {
-		config.AppID = data.Get("app_id").(string)
-	}
-	if config.AppID == "" {
-		config.AppID = "vault_io_integration"
+		cfg.AppID = data.Get("app_id").(string)
 	}
 
 	val, ok = data.GetOk("scope")
 	if ok {
-		config.Scope = val.(string)
+		cfg.Scope = val.(string)
 	} else if req.Operation == logical.CreateOperation {
-		config.Scope = data.Get("scope").(string)
-	}
-	if config.Scope == "" {
-		config.Scope = "vault_io_integration"
+		cfg.Scope = data.Get("scope").(string)
 	}
 
 	val, ok = data.GetOk("roles_as_policies")
 	if ok {
-		config.RolesAsPolicies = val.(bool)
+		cfg.RolesAsPolicies = val.(bool)
 	} else if req.Operation == logical.CreateOperation {
-		config.RolesAsPolicies = data.Get("roles_as_policies").(bool)
+		cfg.RolesAsPolicies = data.Get("roles_as_policies").(bool)
 	}
 
 	val, ok = data.GetOk("policies")
 	if ok {
-		config.Policies = policyutil.ParsePolicies(val)
+		cfg.Policies = policyutil.ParsePolicies(val)
 	} else if req.Operation == logical.CreateOperation {
-		config.Policies = policyutil.ParsePolicies(data.Get("policies"))
+		cfg.Policies = policyutil.ParsePolicies(data.Get("policies"))
 	}
 
-	if len(config.ServiceURL) != 0 {
-		_, err := url.Parse(config.ServiceURL)
-		if err != nil {
-			return logical.ErrorResponse(fmt.Sprintf("Error parsing given base_url: %s", err)), nil
-		}
+	// We want to normalize the service url to https://
+	url, err := url.Parse(cfg.ServiceURL)
+	if err != nil {
+		return logical.ErrorResponse(fmt.Sprintf("config parameter 'service_url' is not a valid url: %s", err)), nil
 	}
 
-	// Munge on the service a little bit, force it to have no trailing / and always start with https://
-	var normalizedService = strings.TrimPrefix(config.ServiceURL, "http://")
-	normalizedService = strings.TrimPrefix(normalizedService, "https://")
-	normalizedService = strings.TrimSuffix(normalizedService, "/")
-	normalizedService = "https://" + normalizedService
-	config.ServiceURL = normalizedService
+	// Its a proper url, just force the scheme to https, and strip any paths
+	url.Scheme = "https"
+	url.Path = ""
+	cfg.ServiceURL = url.String()
 
-	entry, err := logical.StorageEntryJSON("config", config)
+	entry, err := logical.StorageEntryJSON("config", cfg)
 
 	if err != nil {
 		return nil, err
@@ -198,6 +192,7 @@ func (b *backend) pathConfigRead(req *logical.Request, data *framework.FieldData
 // Config returns the configuration for this backend.
 func (b *backend) Config(s logical.Storage) (*config, error) {
 	entry, err := s.Get("config")
+
 	if err != nil {
 		return nil, err
 	}
@@ -207,19 +202,20 @@ func (b *backend) Config(s logical.Storage) (*config, error) {
 		if err := entry.DecodeJSON(&result); err != nil {
 			return nil, fmt.Errorf("error reading configuration: %s", err)
 		}
+		return &result, nil
 	}
 
-	return &result, nil
+	return nil, nil
 }
 
 type config struct {
-	ClientID        string   `json:"client_id" structs:"client_id" mapstructure:"client_id"`
-	ClientSecret    string   `json:"client_secret" structs:"client_secret" mapstructure:"client_secret"`
-	ServiceURL      string   `json:"service_url" structs:"service_url" mapstructure:"service_url"`
-	AppID           string   `json:"app_id" structs:"app_id" mapstructure:"app_id"`
-	Scope           string   `json:"scope" structs:"scope" mapstructure:"scope"`
-	Policies        []string `json:"policies" structs:"policies" mapstructure:"policies"`
-	RolesAsPolicies bool     `json:"roles_as_policies" structs:"roles_as_policies" mapstructure:"roles_as_policies"`
+	ClientID        string   `json:"client_id"`
+	ClientSecret    string   `json:"client_secret"`
+	ServiceURL      string   `json:"service_url"`
+	AppID           string   `json:"app_id"`
+	Scope           string   `json:"scope"`
+	Policies        []string `json:"policies"`
+	RolesAsPolicies bool     `json:"roles_as_policies"`
 }
 
 const pathSyn = `
