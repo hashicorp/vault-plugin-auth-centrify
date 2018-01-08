@@ -3,7 +3,6 @@ package centrify
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -14,6 +13,8 @@ import (
 	"github.com/hashicorp/vault/logical"
 	"github.com/hashicorp/vault/logical/framework"
 )
+
+const sourceHeader string = "vault-plugin-auth-centrify"
 
 func pathLogin(b *backend) *framework.Path {
 	return &framework.Path{
@@ -84,26 +85,29 @@ func (b *backend) pathLogin(
 	var token *oauth.TokenResponse
 	var failure *oauth.ErrorResponse
 
-	if mode == "cc" {
+	switch mode {
+	case "cc":
 		oclient, err = oauth.GetNewConfidentialClient(config.ServiceURL, username, password, cleanhttp.DefaultClient)
-		oclient.SourceHeader = "vault-plugin-auth-centrify"
+		oclient.SourceHeader = sourceHeader
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 		token, failure, err = oclient.ClientCredentials(config.AppID, config.Scope)
-	} else if mode == "ro" {
-		oclient, err = oauth.GetNewConfidentialClient(config.ServiceURL, config.ClientID, config.ClientSecret, cleanhttp.DefaultClient)
-		oclient.SourceHeader = "vault-plugin-auth-centrify"
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
+		}
+	case "ro":
+		oclient, err = oauth.GetNewConfidentialClient(config.ServiceURL, config.ClientID, config.ClientSecret, cleanhttp.DefaultClient)
+		oclient.SourceHeader = sourceHeader
+		if err != nil {
+			return nil, err
 		}
 		token, failure, err = oclient.ResourceOwner(config.AppID, config.Scope, username, password)
-	} else {
+		if err != nil {
+			return nil, err
+		}
+	default:
 		return nil, fmt.Errorf("Invalid mode or no mode provided: %s", mode)
-	}
-
-	if err != nil {
-		return nil, err
 	}
 
 	if failure != nil {
@@ -111,10 +115,10 @@ func (b *backend) pathLogin(
 	}
 
 	uinfo, err := b.getUserInfo(token, config.ServiceURL)
-	b.Logger().Trace("centrify authenticated user", "userinfo", uinfo)
 	if err != nil {
 		return nil, err
 	}
+	b.Logger().Trace("centrify authenticated user", "userinfo", uinfo)
 
 	var rolePolicies []string
 	if config.RolesAsPolicies {
@@ -125,9 +129,6 @@ func (b *backend) pathLogin(
 
 	resp := &logical.Response{
 		Auth: &logical.Auth{
-			InternalData: map[string]interface{}{
-				"access_token": token,
-			},
 			Policies: append(config.Policies, rolePolicies...),
 			Metadata: map[string]string{
 				"username": uinfo.username,
@@ -168,7 +169,7 @@ func (b *backend) getUserInfo(accessToken *oauth.TokenResponse, serviceUrl strin
 	}
 
 	restClient.Headers["Authorization"] = accessToken.TokenType + " " + accessToken.AccessToken
-	restClient.SourceHeader = "vault-plugin-auth-centrify"
+	restClient.SourceHeader = sourceHeader
 
 	// First call /security/whoami to get details on current user
 	whoami, err := restClient.CallGenericMapAPI("/security/whoami", nil)
