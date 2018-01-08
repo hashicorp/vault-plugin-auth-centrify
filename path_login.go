@@ -81,13 +81,12 @@ func (b *backend) pathLogin(
 		return nil, errors.New("centrify auth plugin configuration not set")
 	}
 
-	var oclient *oauth.OauthClient
 	var token *oauth.TokenResponse
 	var failure *oauth.ErrorResponse
 
 	switch mode {
 	case "cc":
-		oclient, err = oauth.GetNewConfidentialClient(config.ServiceURL, username, password, cleanhttp.DefaultClient)
+		oclient, err := oauth.GetNewConfidentialClient(config.ServiceURL, username, password, cleanhttp.DefaultClient)
 		oclient.SourceHeader = sourceHeader
 		if err != nil {
 			return nil, err
@@ -97,7 +96,7 @@ func (b *backend) pathLogin(
 			return nil, err
 		}
 	case "ro":
-		oclient, err = oauth.GetNewConfidentialClient(config.ServiceURL, config.ClientID, config.ClientSecret, cleanhttp.DefaultClient)
+		oclient, err := oauth.GetNewConfidentialClient(config.ServiceURL, config.ClientID, config.ClientSecret, cleanhttp.DefaultClient)
 		oclient.SourceHeader = sourceHeader
 		if err != nil {
 			return nil, err
