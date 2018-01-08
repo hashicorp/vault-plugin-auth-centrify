@@ -119,16 +119,9 @@ func (b *backend) pathLogin(
 	}
 	b.Logger().Trace("centrify authenticated user", "userinfo", uinfo)
 
-	var rolePolicies []string
-	if config.RolesAsPolicies {
-		for _, role := range uinfo.roles {
-			rolePolicies = append(rolePolicies, strings.Replace(role, " ", "_", -1))
-		}
-	}
-
 	resp := &logical.Response{
 		Auth: &logical.Auth{
-			Policies: append(config.Policies, rolePolicies...),
+			Policies: config.Policies,
 			Metadata: map[string]string{
 				"username": uinfo.username,
 			},

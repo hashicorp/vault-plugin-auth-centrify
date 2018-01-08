@@ -39,11 +39,6 @@ func pathConfig(b *backend) *framework.Path {
 				Type:        framework.TypeCommaStringSlice,
 				Description: "Comma-separated list of policies all authenticated users inherit",
 			},
-			"roles_as_policies": &framework.FieldSchema{
-				Type:        framework.TypeBool,
-				Description: "Use user's role list as policies, note that _ will be used in place of spaces.",
-				Default:     false,
-			},
 		},
 
 		ExistenceCheck: b.pathConfigExistCheck,
@@ -127,13 +122,6 @@ func (b *backend) pathConfigCreateOrUpdate(
 		cfg.Scope = data.Get("scope").(string)
 	}
 
-	val, ok = data.GetOk("roles_as_policies")
-	if ok {
-		cfg.RolesAsPolicies = val.(bool)
-	} else if req.Operation == logical.CreateOperation {
-		cfg.RolesAsPolicies = data.Get("roles_as_policies").(bool)
-	}
-
 	val, ok = data.GetOk("policies")
 	if ok {
 		cfg.Policies = policyutil.ParsePolicies(val)
@@ -177,13 +165,12 @@ func (b *backend) pathConfigRead(req *logical.Request, data *framework.FieldData
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"client_id":         config.ClientID,
-			"client_secret":     config.ClientSecret,
-			"service_url":       config.ServiceURL,
-			"app_id":            config.AppID,
-			"scope":             config.Scope,
-			"roles_as_policies": config.RolesAsPolicies,
-			"policies":          config.Policies,
+			"client_id":     config.ClientID,
+			"client_secret": config.ClientSecret,
+			"service_url":   config.ServiceURL,
+			"app_id":        config.AppID,
+			"scope":         config.Scope,
+			"policies":      config.Policies,
 		},
 	}
 	return resp, nil
@@ -209,13 +196,12 @@ func (b *backend) Config(s logical.Storage) (*config, error) {
 }
 
 type config struct {
-	ClientID        string   `json:"client_id"`
-	ClientSecret    string   `json:"client_secret"`
-	ServiceURL      string   `json:"service_url"`
-	AppID           string   `json:"app_id"`
-	Scope           string   `json:"scope"`
-	Policies        []string `json:"policies"`
-	RolesAsPolicies bool     `json:"roles_as_policies"`
+	ClientID     string   `json:"client_id"`
+	ClientSecret string   `json:"client_secret"`
+	ServiceURL   string   `json:"service_url"`
+	AppID        string   `json:"app_id"`
+	Scope        string   `json:"scope"`
+	Policies     []string `json:"policies"`
 }
 
 const pathSyn = `
