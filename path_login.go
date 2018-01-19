@@ -1,6 +1,7 @@
 package centrify
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -45,8 +46,7 @@ func pathLogin(b *backend) *framework.Path {
 	}
 }
 
-func (b *backend) pathLoginAliasLookahead(
-	req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (b *backend) pathLoginAliasLookahead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	username := strings.ToLower(d.Get("username").(string))
 	if username == "" {
 		return nil, fmt.Errorf("missing username")
@@ -61,9 +61,7 @@ func (b *backend) pathLoginAliasLookahead(
 	}, nil
 }
 
-func (b *backend) pathLogin(
-	req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-
+func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	username := strings.ToLower(d.Get("username").(string))
 	password := d.Get("password").(string)
 	mode := d.Get("mode").(string)
@@ -72,7 +70,7 @@ func (b *backend) pathLogin(
 		return nil, fmt.Errorf("missing password")
 	}
 
-	config, err := b.Config(req.Storage)
+	config, err := b.Config(ctx, req.Storage)
 	if err != nil {
 		return nil, err
 	}
