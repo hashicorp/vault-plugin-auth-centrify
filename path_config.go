@@ -1,6 +1,7 @@
 package centrify
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 
@@ -53,8 +54,8 @@ func pathConfig(b *backend) *framework.Path {
 	}
 }
 
-func (b *backend) pathConfigExistCheck(req *logical.Request, data *framework.FieldData) (bool, error) {
-	config, err := b.Config(req.Storage)
+func (b *backend) pathConfigExistCheck(ctx context.Context, req *logical.Request, data *framework.FieldData) (bool, error) {
+	config, err := b.Config(ctx, req.Storage)
 	if err != nil {
 		return false, err
 	}
@@ -66,10 +67,8 @@ func (b *backend) pathConfigExistCheck(req *logical.Request, data *framework.Fie
 	return true, nil
 }
 
-func (b *backend) pathConfigCreateOrUpdate(
-	req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-
-	cfg, err := b.Config(req.Storage)
+func (b *backend) pathConfigCreateOrUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	cfg, err := b.Config(ctx, req.Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -146,15 +145,15 @@ func (b *backend) pathConfigCreateOrUpdate(
 		return nil, err
 	}
 
-	if err := req.Storage.Put(entry); err != nil {
+	if err := req.Storage.Put(ctx, entry); err != nil {
 		return nil, err
 	}
 
 	return nil, nil
 }
 
-func (b *backend) pathConfigRead(req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-	config, err := b.Config(req.Storage)
+func (b *backend) pathConfigRead(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	config, err := b.Config(ctx, req.Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -177,8 +176,8 @@ func (b *backend) pathConfigRead(req *logical.Request, data *framework.FieldData
 }
 
 // Config returns the configuration for this backend.
-func (b *backend) Config(s logical.Storage) (*config, error) {
-	entry, err := s.Get("config")
+func (b *backend) Config(ctx context.Context, s logical.Storage) (*config, error) {
+	entry, err := s.Get(ctx, "config")
 
 	if err != nil {
 		return nil, err
