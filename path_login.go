@@ -12,6 +12,7 @@ import (
 	"github.com/centrify/cloud-golang-sdk/oauth"
 	"github.com/centrify/cloud-golang-sdk/restapi"
 	"github.com/hashicorp/vault/sdk/framework"
+	"github.com/hashicorp/vault/sdk/helper/cidrutil"
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
@@ -77,6 +78,10 @@ func (b *backend) pathLogin(ctx context.Context, req *logical.Request, d *framew
 
 	if config == nil {
 		return nil, errors.New("centrify auth plugin configuration not set")
+	}
+
+	if !cidrutil.RemoteAddrIsOk(req.Connection.RemoteAddr, config.TokenBoundCIDRs) {
+		return nil, logical.ErrPermissionDenied
 	}
 
 	var token *oauth.TokenResponse
