@@ -16,6 +16,9 @@ import (
 func pathConfig(b *backend) *framework.Path {
 	p := &framework.Path{
 		Pattern: "config",
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixCentrify,
+		},
 		Fields: map[string]*framework.FieldSchema{
 			"client_id": &framework.FieldSchema{
 				Type:        framework.TypeString,
@@ -48,10 +51,25 @@ func pathConfig(b *backend) *framework.Path {
 
 		ExistenceCheck: b.pathConfigExistCheck,
 
-		Callbacks: map[logical.Operation]framework.OperationFunc{
-			logical.UpdateOperation: b.pathConfigCreateOrUpdate,
-			logical.CreateOperation: b.pathConfigCreateOrUpdate,
-			logical.ReadOperation:   b.pathConfigRead,
+		Operations: map[logical.Operation]framework.OperationHandler{
+			logical.UpdateOperation: &framework.PathOperation{
+				Callback: b.pathConfigCreateOrUpdate,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationVerb: "configure",
+				},
+			},
+			logical.CreateOperation: &framework.PathOperation{
+				Callback: b.pathConfigCreateOrUpdate,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationVerb: "configure",
+				},
+			},
+			logical.ReadOperation: &framework.PathOperation{
+				Callback: b.pathConfigRead,
+				DisplayAttrs: &framework.DisplayAttributes{
+					OperationSuffix: "configuration",
+				},
+			},
 		},
 
 		HelpSynopsis: pathSyn,

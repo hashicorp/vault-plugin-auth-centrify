@@ -10,6 +10,9 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
+// operationPrefixCentrify is used as a prefix for OpenAPI operation id's.
+const operationPrefixCentrify = "centrify"
+
 func Factory(ctx context.Context, conf *logical.BackendConfig) (logical.Backend, error) {
 	b := Backend()
 	if err := b.Setup(ctx, conf); err != nil {
