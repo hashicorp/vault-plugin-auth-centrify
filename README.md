@@ -11,13 +11,13 @@ This plugin allows for Centrify Identity Platform users accounts to authenticate
 
 ## Getting Started
 
-This is a [Vault plugin](https://www.vaultproject.io/docs/internals/plugins.html)
+This is a [Vault plugin](https://developer.hashicorp.com/vault/docs/plugins)
 and is meant to work with Vault. This guide assumes you have already installed Vault
 and have a basic understanding of how Vault works.
 
-Otherwise, first read this guide on how to [get started with Vault](https://www.vaultproject.io/intro/getting-started/install.html).
+Otherwise, first read this guide on how to [get started with Vault](https://developer.hashicorp.com/vault/tutorials/getting-started/getting-started-install).
 
-To learn specifically about how plugins work, see documentation on [Vault plugins](https://www.vaultproject.io/docs/internals/plugins.html).
+To learn specifically about how plugins work, see documentation on [Vault plugins](https://developer.hashicorp.com/vault/docs/plugins).
 
 ## Security Model
 
@@ -121,7 +121,7 @@ $ make dev
 ```
 
 Put the plugin binary into a location of your choice. This directory
-will be specified as the [`plugin_directory`](https://www.vaultproject.io/docs/configuration/index.html#plugin_directory)
+will be specified as the [`plugin_directory`](https://developer.hashicorp.com/vault/docs/configuration#plugin_directory)
 in the Vault config used to start the server.
 
 ```hcl
