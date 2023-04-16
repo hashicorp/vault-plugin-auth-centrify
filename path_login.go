@@ -24,6 +24,10 @@ const sourceHeader string = "vault-plugin-auth-centrify"
 func pathLogin(b *backend) *framework.Path {
 	return &framework.Path{
 		Pattern: "login",
+		DisplayAttrs: &framework.DisplayAttributes{
+			OperationPrefix: operationPrefixCentrify,
+			OperationVerb:   "login",
+		},
 		Fields: map[string]*framework.FieldSchema{
 			"username": &framework.FieldSchema{
 				Type:        framework.TypeString,
