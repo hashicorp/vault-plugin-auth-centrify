@@ -1,5 +1,7 @@
 ## Unreleased
 
+## v0.15.0
+
 IMPROVEMENTS
 
 * enable plugin multiplexing [GH-17](https://github.com/hashicorp/vault-plugin-auth-centrify/pull/17)
