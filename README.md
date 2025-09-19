@@ -1,3 +1,5 @@
+# Deprecated: This plugin was deprecated in Vault 1.15 and removed in Vault 1.17.
+
 # Vault Plugin: Centrify Identity Platform Auth Backend
 
 This is a standalone backend plugin for use with [Hashicorp Vault](https://www.github.com/hashicorp/vault).
